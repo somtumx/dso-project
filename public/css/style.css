@@ -1,0 +1,83 @@
+/* Base Styles & Global Resets */
+body {
+    font-family: 'Noto Sans Thai', sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Navbar Styling */
+.navbar.custom-navbar {
+    background-color: #2C2F38 !important;
+    padding: 5px 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.navbar.custom-navbar .navbar-brand img { max-height: 70px; }
+.navbar.custom-navbar .navbar-text, .navbar.custom-navbar .nav-link { color: white !important; }
+.navbar.custom-navbar .nav-link { margin: 0 5px; padding: 8px 12px !important; border-radius: 5px; transition: background-color 0.3s ease; }
+.navbar.custom-navbar .nav-item.active .nav-link, .navbar.custom-navbar .nav-link:hover { background-color: #dc3545; }
+.navbar.custom-navbar .user-actions .btn { font-size: 0.9rem; }
+.navbar.custom-navbar .user-actions .btn-logout, .navbar.custom-navbar .user-actions .btn-login { background-color: #dc3545; border-color: #dc3545; }
+.navbar.custom-navbar .user-actions .btn-logout:hover, .navbar.custom-navbar .user-actions .btn-login:hover { background-color: #c82333; border-color: #bd2130; }
+.navbar.custom-navbar .nav-item.dropdown .nav-link .badge { position: absolute; top: 5px; right: 0px; font-size: 0.6rem; padding: 2px 5px; }
+.dropdown-menu .dropdown-item { white-space: normal; font-size: 0.9rem; }
+
+/* Page Header & Content Wrapper */
+.page-header {
+    background-color: #ffffff;
+    padding: 15px 20px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 20px;
+}
+.content-wrapper { padding: 20px; }
+.flatpickr-input { width: 120px !important; } /* Make date filters smaller */
+
+/* Summary Cards (HomePage) */
+.summary-card {
+    border-radius: 0.75rem; color: white; padding: 1.25rem;
+    margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.summary-card .big-number { font-size: 2.5rem; font-weight: 700; }
+.summary-card .card-title { font-size: 1rem; }
+
+/* Table Section Styling */
+.table-section {
+    background-color: #ffffff; padding: 25px; border-radius: 8px;
+    margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+.table-section h3 { margin-bottom: 20px; font-size: 1.5rem; color: #333; font-weight: bold; }
+.table th { background-color: #c82333; color: white; text-align: center; vertical-align: middle; }
+.table td { text-align: center; vertical-align: middle; }
+.table td:nth-child(2), .table td:nth-child(4), .table td:nth-child(5) { text-align: left; } /* Align specific columns left */
+.table .col-remarks { white-space: pre-wrap; min-width: 180px; word-break: break-word; text-align: left; }
+.table .badge { font-size: 0.9rem; padding: 0.4em 0.6em; }
+
+/* Modal Styling */
+.modal-header { background-color: #343a40; color: white; }
+.modal-header .close { color: white; opacity: 0.9; }
+.modal-success .modal-content { border: none; border-radius: 0.5rem; text-align: center; }
+.modal-success .modal-body { padding: 2rem; }
+
+/* NEW Styles for Edited Status */
+.badge-purple {
+    color: #fff;
+    background-color: #6f42c1; /* Bootstrap purple */
+}
+
+.status-edited {
+    background-color: #fff3cd !important; /* Bootstrap warning light background */
+    font-weight: bold;
+}
+.status-edited td {
+    font-weight: bold;
+}
+
+
+/* Utility */
+.role-restricted { display: none; }
+@media (max-width: 768px) {
+    .page-header .d-flex { flex-direction: column; align-items: flex-start; gap: 15px; }
+    .table .btn { display: block; width: 100%; margin-bottom: 5px; }
+    .table .btn:last-child { margin-bottom: 0; }
+}

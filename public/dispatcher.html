@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <title>DSO - Dispatcher View</title>
+    <!-- Included Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Bootstrap and Font Awesome -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Flatpickr Date Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        #notification-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 1050; }
+        .toast-header { font-weight: bold; }
+        .navbar.custom-navbar .nav-item.dropdown .nav-link .badge { position: absolute; top: 8px; right: 0px; font-size: 0.6rem; padding: 2px 5px; }
+        .dropdown-menu .dropdown-item { white-space: normal; font-size: 0.9rem; }
+        /* Style for filter group to be on one line */
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            align-items: center;
+            gap: 0.5rem; /* Add some space between items */
+        }
+        .filter-group > * {
+            flex-shrink: 0; /* Prevent items from shrinking */
+        }
+        .flatpickr-input {
+            width: 120px !important; /* Make date filters smaller */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light custom-navbar">
+        <a class="navbar-brand" href="/">
+            <img src="https://lh3.googleusercontent.com/d/1BMQcxehcCywryLdT8G7BC7SJtA0p8RWe" alt="Company Logo">
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/" title="กลับไปยังหน้าหลัก"><i class="fas fa-home"></i> Home</a>
+                </li>
+                <li class="nav-item active role-restricted" id="dispatcherNavButton" style="display: none;">
+                    <a class="nav-link" href="/dispatcher.html" title="หน้าจัดการสำหรับ Dispatcher"><i class="fas fa-truck"></i> Dispatcher View <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item role-restricted" id="adminNavButton" style="display: none;">
+                    <a class="nav-link" href="/admin.html" title="แผงควบคุมผู้ดูแลระบบ"><i class="fas fa-user-shield"></i> Admin Panel</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav ml-auto user-actions align-items-center">
+                <li class="nav-item dropdown" id="notificationBellContainer" style="display: none;">
+                    <a class="nav-link dropdown-toggle text-white position-relative" href="#" id="notificationDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="การแจ้งเตือน">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge badge-danger" id="notificationCount" style="display: none;">0</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="notificationDropdown" id="notificationList" style="min-width: 350px; max-height: 400px; overflow-y: auto;">
+                        <!-- Notifications populated by JS -->
+                    </div>
+                </li>
+                <li class="nav-item" id="userInfo" style="display: none;">
+                    <span class="navbar-text mr-3">สวัสดี, คุณ <strong id="userDisplayName"></strong></span>
+                </li>
+                <li class="nav-item" id="settingsNavButton" style="display: none;">
+                    <button class="btn btn-secondary" id="settingsButton" title="ตั้งค่า"><i class="fas fa-cog"></i></button>
+                </li>
+                <li class="nav-item" id="logoutNavButton" style="display: none;">
+                    <button class="btn btn-logout" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container-fluid content-wrapper">
+        <div id="messageContainer"></div>
+
+        <!-- Header for Dispatcher Page (REVISED FILTER) -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <h2><i class="fas fa-truck"></i> Dispatcher Control Panel</h2>
+                <div class="filter-group">
+                    <label for="filterSalesAdminDate" class="my-1" style="font-weight:normal;">วันที่แจ้งงาน:</label>
+                    <input type="text" id="filterSalesAdminDate" class="form-control form-control-sm my-1 flatpickr-input">
+
+                    <label for="filterDeliveryDateStart" class="my-1" style="font-weight:normal;">วันที่ส่งสินค้า:</label>
+                    <div id="customDateRange" class="d-inline-flex align-items-center">
+                        <input type="text" id="filterDeliveryDateStart" class="form-control form-control-sm my-1 flatpickr-input" placeholder="จากวันที่">
+                        <span class="mx-2 my-1">ถึง</span>
+                        <input type="text" id="filterDeliveryDateEnd" class="form-control form-control-sm my-1 flatpickr-input" placeholder="ถึงวันที่">
+                    </div>
+
+                    <label for="filterStatus" class="my-1" style="font-weight:normal;">สถานะ:</label>
+                    <select id="filterStatus" class="form-control form-control-sm my-1" style="width: auto;">
+                        <option value="">สถานะทั้งหมด</option>
+                        <option>รอยืนยัน DO</option>
+                        <option>โอนงาน</option>
+                        <option>รอ Sales Admin แก้ไข</option>
+                        <option>แก้ไขโดย Sale Admin</option>
+                        <option>กำลังดำเนินการ</option>
+                        <option>ดำเนินการเสร็จสิ้น</option>
+                    </select>
+
+                    <label for="filterBranch" class="my-1" style="font-weight:normal;">สาขา:</label>
+                    <select id="filterBranch" class="form-control form-control-sm my-1" style="width: auto;">
+                        <option value="">สาขาทั้งหมด</option>
+                    </select>
+
+                    <button id="applyFilterButton" class="btn btn-sm btn-info my-1"><i class="fas fa-search"></i> ใช้ตัวกรอง</button>
+                    <button id="clearFilterButton" class="btn btn-sm btn-outline-secondary my-1"><i class="fas fa-times"></i> ล้าง</button>
+                    <button id="manualRefreshButton" class="btn btn-sm btn-success my-1"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    <span id="autoRefreshStatus" class="badge badge-light my-1" title="อัปเดตข้อมูลอัตโนมัติ"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section for Pending DOs -->
+        <div class="table-section" id="pending-section">
+            <h3><i class="fas fa-hourglass-half"></i> งานที่รอการยืนยัน (Pending DOs)</h3>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>เวลาแจ้งงาน</th>
+                            <th>รอบส่งสินค้า</th>
+                            <th>สาขา</th>
+                            <th>จำนวน DO</th>
+                            <th class="col-remarks">หมายเหตุ SALE</th>
+                            <th>ผู้แจ้งงาน</th>
+                            <th>สถานะ</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingDOsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <hr class="my-5">
+
+        <!-- Section for Acknowledged DOs -->
+        <div class="table-section" id="acknowledged-section">
+            <h3><i class="fas fa-check-double"></i> งานในความรับผิดชอบของคุณ (My Tasks)</h3>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>เวลารับทราบงาน</th>
+                            <th>รอบส่งสินค้า</th>
+                            <th>สาขา</th>
+                            <th>จำนวน DO</th>
+                            <th class="col-remarks">หมายเหตุ SALE</th>
+                            <th>จำนวน Shipment</th>
+                            <th class="col-remarks">หมายเหตุ (Shipment)</th>
+                            <th>เวลาสร้าง Shipment</th>
+                            <th>สถานะงาน</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="acknowledgedDOsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- (Modals are unchanged) -->
+    <div class="modal fade" id="rejectModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">ปฏิเสธ Task</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><input type="hidden" id="rejectTaskId"><div class="form-group"><label for="rejectionReason">กรุณาระบุเหตุผลที่ปฏิเสธ:</label><textarea class="form-control" id="rejectionReason" rows="3" required></textarea></div><div id="rejectMessage"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-danger" id="confirmRejectButton">ยืนยันการปฏิเสธ</button></div></div></div></div>
+    <div class="modal fade" id="shipmentModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title" id="shipmentModalTitle"></h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><form id="shipmentForm"><input type="hidden" id="shipmentTaskId"><div class="form-group"><label for="shipmentQty">จำนวน Shipment:</label><input type="text" class="form-control" id="shipmentQty"></div><div class="form-group"><label for="shipmentNotes">หมายเหตุ:</label><textarea class="form-control" id="shipmentNotes" rows="3"></textarea></div><div class="form-group" id="editReasonGroup" style="display: none;"><label for="shipmentEditReason">เหตุผลการแก้ไข:</label><textarea class="form-control" id="shipmentEditReason" rows="2"></textarea></div></form><div id="shipmentMessage"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-success" id="confirmShipmentButton">ยืนยัน</button></div></div></div></div>
+    <div class="modal fade" id="transferModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-dark"><h5 class="modal-title">โอน Task</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><input type="hidden" id="transferTaskId"><div class="form-group"><label for="transferNote">เหตุผลการโอน (ไม่บังคับ):</label><textarea class="form-control" id="transferNote" rows="3" placeholder="โอนให้ Dispatcher อื่นรับช่วงต่อ"></textarea></div><div id="transferMessage"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-warning" id="confirmTransferButton">ยืนยันการโอน</button></div></div></div></div>
+    <div class="modal fade" id="logoutRedirectModal" tabindex="-1" data-backdrop="static" data-keyboard="false"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">ออกจากระบบสำเร็จ</h5></div><div class="modal-body"><p>คุณได้ออกจากระบบเรียบร้อยแล้ว</p><p>คลิก "ตกลง" เพื่อกลับไปยังหน้าหลัก</p></div><div class="modal-footer"><button type="button" class="btn btn-primary" id="confirmLogoutRedirectButton">ตกลง</button></div></div></div></div>
+    <div class="modal fade" id="settingsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="settingsModalLabel"><i class="fas fa-cog"></i> ตั้งค่าบัญชี</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><div id="settingsMessageContainer"></div><ul class="nav nav-tabs"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#displayNameTab">เปลี่ยนชื่อที่แสดง</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href="#passwordTab">เปลี่ยนรหัสผ่าน</a></li></ul><div class="tab-content pt-3"><div class="tab-pane container active" id="displayNameTab"><form id="displayNameForm"><div class="form-group"><label for="newDisplayName">ชื่อที่แสดงใหม่</label><input type="text" class="form-control" id="newDisplayName" required></div><button type="button" class="btn btn-primary" id="saveDisplayNameButton">บันทึกชื่อใหม่</button></form></div><div class="tab-pane container fade" id="passwordTab"><form id="passwordForm"><div class="form-group"><label for="oldPassword">รหัสผ่านปัจจุบัน</label><input type="password" class="form-control" id="oldPassword" required></div><div class="form-group"><label for="newPassword">รหัสผ่านใหม่</label><input type="password" class="form-control" id="newPassword" required></div><div class="form-group"><label for="confirmNewPassword">ยืนยันรหัสผ่านใหม่</label><input type="password" class="form-control" id="confirmNewPassword" required></div><button type="button" class="btn btn-primary" id="savePasswordButton">เปลี่ยนรหัสผ่าน</button></form></div></div></div></div></div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <!-- JS Libraries -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <script>
+        const STATUS_COMPLETED = "ดำเนินการเสร็จสิ้น";
+        const STATUS_SALE_ADMIN_EDITED = "แก้ไขโดย Sale Admin";
+        const AUTO_REFRESH_INTERVAL = 60000;
+        let currentUser = { loggedIn: false, email: '', role: '', displayName: '', token: null };
+        let autoRefreshIntervalId = null;
+        let myTasksData = [];
+
+        function escapeHtml(unsafe) { if (unsafe === null || typeof unsafe === 'undefined') return ''; return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+        function displayMessage(containerId, type, text) { const alertClass = `alert-${type}`; const icon = type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>'; const messageDiv = $(`#${containerId}`); messageDiv.html(`<div class="alert ${alertClass} alert-dismissible fade show" role="alert">${icon} ${escapeHtml(text)}<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button></div>`); setTimeout(() => { messageDiv.find('.alert').alert('close'); }, 5000); }
+        function formatTimestamp(ts, type = 'datetime') { if (!ts || ts === '-') return '-'; try { const date = new Date(ts); if (isNaN(date.getTime())) return '-'; const options = { timeZone: 'Asia/Bangkok' }; if (type === 'date') { return date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', ...options }); } if (type === 'time') { return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false, ...options }); } const datePart = date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', ...options }); const timePart = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false, ...options }); return `${datePart} ${timePart}`; } catch (e) { return '-'; } }
+
+        function updateNotificationBell(notifications = []) {
+            const notificationCountBadge = $('#notificationCount');
+            const notificationList = $('#notificationList');
+
+            const unreadCount = notifications.length;
+            notificationCountBadge.text(unreadCount > 0 ? unreadCount : '').toggle(unreadCount > 0);
+
+            notificationList.empty();
+            notificationList.append('<h6 class="dropdown-header">การแจ้งเตือนล่าสุด (20 รายการ)</h6>');
+
+            if (notifications.length > 0) {
+                notifications.forEach(note => {
+                    let message = `${note.DisplayName} เปลี่ยนสถานะงาน #${note.DO_Task_ID} เป็น <b>${note.Status_New}</b>`;
+                     if (note.Status_New === 'Sales Admin แก้ไขหมายเหตุ') {
+                        message = `${note.DisplayName} ได้แก้ไขหมายเหตุในงาน #${note.DO_Task_ID}`;
+                    }
+                    const itemHtml = `
+                        <div class="dropdown-item" style="white-space: normal; cursor: default;">
+                            <small>${message}</small><br>
+                            <small class="text-muted">${formatTimestamp(note.Change_Status_Time)}</small>
+                        </div>`;
+                    notificationList.append(itemHtml);
+                });
+            } else {
+                notificationList.append('<div class="dropdown-item text-center text-muted" style="cursor: default;">ไม่มีการแจ้งเตือน</div>');
+            }
+        }
+
+        function loadNotifications() {
+            if (!currentUser.loggedIn) return;
+            google.script.run
+                .withSuccessHandler(response => {
+                    if (response.success) {
+                        updateNotificationBell(response.data);
+                    }
+                })
+                .getNotificationsForUser(currentUser.token);
+        }
+
+        function setUIForLoggedInState() {
+            $('#userDisplayName').text(escapeHtml(currentUser.displayName));
+            $('#userInfo, #logoutNavButton, #dispatcherNavButton, #settingsNavButton, #notificationBellContainer').show();
+            if (currentUser.role === 'Admin') {
+                $('#adminNavButton').show();
+            }
+            loadAllData();
+            loadNotifications();
+            loadBranchList();
+            startAutoRefresh();
+        }
+
+        function setUIForLoggedOutState() {
+            $('.content-wrapper').html('<div class="alert alert-danger"><h1>Access Denied</h1><p>You must be logged in as a Dispatcher or Admin to view this page. Please <a href="/">return to the Home page</a> to log in.</p></div>');
+            $('#userInfo, #logoutNavButton, #dispatcherNavButton, #settingsNavButton, #adminNavButton, #notificationBellContainer').hide();
+            stopAutoRefresh();
+        }
+
+        function handleLogout() {
+            stopAutoRefresh();
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (res.success) {
+                        localStorage.removeItem('userToken');
+                        myTasksData = [];
+                        $('#logoutRedirectModal').modal('show');
+                    } else {
+                        displayMessage('messageContainer', 'danger', `Logout failed: ${res.message}`);
+                    }
+                })
+                .logoutUser(localStorage.getItem('userToken'));
+        }
+
+        function checkInitialLoginStatus() {
+            const token = localStorage.getItem('userToken');
+            if (!token) {
+                setUIForLoggedOutState();
+                return;
+            }
+
+            google.script.run.withSuccessHandler(session => {
+                if (session.success && session.loggedIn && (session.user.role === 'Dispatcher' || session.user.role === 'Admin')) {
+                    currentUser = { ...session.user, loggedIn: true, token: token };
+                    setUIForLoggedInState();
+                } else {
+                    localStorage.removeItem('userToken');
+                    setUIForLoggedOutState();
+                }
+            }).withFailureHandler(err => setUIForLoggedOutState()).getUserDetailsFromToken(token);
+        }
+
+        function loadAllData() {
+            loadPendingDOs();
+            loadMyTasks();
+        }
+
+        function getFilters() {
+            return {
+                salesAdminDate: $('#filterSalesAdminDate').val() || null,
+                deliveryDateStart: $('#filterDeliveryDateStart').val() || null,
+                deliveryDateEnd: $('#filterDeliveryDateEnd').val() || null,
+                status: $('#filterStatus').val() || null,
+                branch: $('#filterBranch').val() || null
+            };
+        }
+
+        function loadBranchList() {
+            google.script.run.withSuccessHandler(response => {
+                if (response.success) {
+                    const filterBranchSelect = $('#filterBranch');
+                    filterBranchSelect.html('<option value="">สาขาทั้งหมด</option>');
+                    response.data.forEach(branch => {
+                        const optionHtml = `<option value="${escapeHtml(branch)}">${escapeHtml(branch)}</option>`;
+                        filterBranchSelect.append(optionHtml);
+                    });
+                }
+            }).getBranchList();
+        }
+
+        function loadPendingDOs() {
+            const tableBody = $("#pendingDOsBody");
+            tableBody.html(`<tr><td colspan="8" class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>`);
+
+            const dateFilters = {
+                 salesAdminDate: $('#filterSalesAdminDate').val() || null,
+                 deliveryDateStart: $('#filterDeliveryDateStart').val() || null,
+                 deliveryDateEnd: $('#filterDeliveryDateEnd').val() || null
+            };
+
+            google.script.run
+                .withSuccessHandler(res => {
+                    if(res.success) {
+                        let data = res.data || [];
+                        const allFilters = getFilters();
+
+                        if (allFilters.status) {
+                            data = data.filter(d => d.Overall_Status === allFilters.status);
+                        }
+                        if (allFilters.branch) {
+                            data = data.filter(d => d.Branch === allFilters.branch);
+                        }
+                        renderPendingTable(data);
+                    }
+                    else tableBody.html(`<tr><td colspan="8" class="text-center text-warning">${escapeHtml(res.message)}</td></tr>`);
+                }).withFailureHandler(err => tableBody.html(`<tr><td colspan="8" class="text-center text-danger">Error: ${escapeHtml(err.message)}</td></tr>`))
+                .getPendingDOs(currentUser.token, dateFilters);
+        }
+
+        function loadMyTasks() {
+            const tableBody = $("#acknowledgedDOsBody");
+            tableBody.html(`<tr><td colspan="10" class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>`);
+
+            const dateFilters = {
+                 salesAdminDate: $('#filterSalesAdminDate').val() || null,
+                 deliveryDateStart: $('#filterDeliveryDateStart').val() || null,
+                 deliveryDateEnd: $('#filterDeliveryDateEnd').val() || null
+            };
+
+            google.script.run
+                .withSuccessHandler(res => {
+                    if(res.success) {
+                        let data = res.data || [];
+                        const allFilters = getFilters();
+
+                        if (allFilters.status) {
+                            data = data.filter(d => d.Overall_Status === allFilters.status);
+                        }
+                        if (allFilters.branch) {
+                            data = data.filter(d => d.Branch === allFilters.branch);
+                        }
+
+                        myTasksData = data;
+                        renderAcknowledgedTable(myTasksData);
+                    }
+                    else tableBody.html(`<tr><td colspan="10" class="text-center text-warning">${escapeHtml(res.message)}</td></tr>`);
+                }).withFailureHandler(err => tableBody.html(`<tr><td colspan="10" class="text-center text-danger">Error: ${escapeHtml(err.message)}</td></tr>`))
+                .getDispatcherAcknowledgedDOs(currentUser.token, dateFilters);
+        }
+
+        function getStatusBadgeClass(status) {
+            switch(status) {
+                case 'รอยืนยัน DO': return 'badge-info';
+                case 'รอ Sales Admin แก้ไข': return 'badge-danger';
+                case 'โอนงาน': return 'badge-warning';
+                case 'แก้ไขโดย Sale Admin': return 'badge-purple';
+                case 'กำลังดำเนินการ': return 'badge-primary';
+                case 'ดำเนินการเสร็จสิ้น': return 'badge-success';
+                default: return 'badge-secondary';
+            }
+        }
+
+        function renderPendingTable(data) {
+            const tbody = $(`#pendingDOsBody`);
+            tbody.empty();
+            if (!data || data.length === 0) {
+                tbody.html(`<tr><td colspan="8" class="text-center">ไม่มีข้อมูลที่ตรงกับตัวกรอง</td></tr>`);
+                return;
+            }
+
+            data.sort((a,b) => new Date(a.Sales_Admin_Timestamp) - new Date(b.Sales_Admin_Timestamp));
+            data.forEach(doo => {
+                const rowHtml = `<tr>
+                    <td>${formatTimestamp(doo.Sales_Admin_Timestamp, 'time')}</td>
+                    <td>${formatTimestamp(doo.Delivery_Date, 'date')}</td>
+                    <td>${escapeHtml(doo.Branch)}</td>
+                    <td>${escapeHtml(doo.SAP_DO_Number)}</td>
+                    <td class="col-remarks">${escapeHtml(doo.Sales_Admin_Remarks)}</td>
+                    <td>${escapeHtml(doo.Sales_Admin_Name)}</td>
+                    <td><span class="badge ${getStatusBadgeClass(doo.Overall_Status)}">${escapeHtml(doo.Overall_Status)}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-success btn-acknowledge" data-taskid="${doo.DO_Task_ID}" title="รับงานนี้"><i class="fas fa-check"></i> รับงาน</button>
+                        <button class="btn btn-sm btn-danger btn-reject" data-taskid="${doo.DO_Task_ID}" title="ปฏิเสธงานนี้"><i class="fas fa-times"></i> ปฏิเสธ</button>
+                    </td></tr>`;
+                tbody.append(rowHtml);
+            });
+        }
+
+        function renderAcknowledgedTable(data) {
+            const tbody = $(`#acknowledgedDOsBody`);
+            tbody.empty();
+            if (!data || data.length === 0) {
+                tbody.html(`<tr><td colspan="10" class="text-center">ไม่มีข้อมูลที่ตรงกับตัวกรอง</td></tr>`);
+                return;
+            }
+
+            data.sort((a,b) => new Date(b.Dispatcher_DO_Confirm_Timestamp) - new Date(a.Dispatcher_DO_Confirm_Timestamp));
+            data.forEach(doo => {
+                const isCompleted = doo.Overall_Status === STATUS_COMPLETED;
+                const isEditedBySaleAdmin = doo.Overall_Status === STATUS_SALE_ADMIN_EDITED;
+                let actionsHtml = '';
+
+                if (isEditedBySaleAdmin) {
+                    actionsHtml = `
+                        <button class="btn btn-sm btn-info btn-acknowledge-edit" data-taskid="${doo.DO_Task_ID}" title="รับทราบการแก้ไขจาก Sale Admin">
+                            <i class="fas fa-check-double"></i> รับทราบการแก้ไข
+                        </button>`;
+                } else {
+                    actionsHtml = `
+                        <button class="btn btn-sm btn-primary btn-confirm-shipment"
+                                data-taskid="${doo.DO_Task_ID}"
+                                data-is-completed="${isCompleted}"
+                                data-qty="${escapeHtml(doo.Dispatcher_Shipment_Qty)}"
+                                data-notes="${escapeHtml(doo.Dispatcher_Notes)}"
+                                title="${isCompleted ? 'แก้ไข' : 'ยืนยัน'}การจัดส่ง">
+                            <i class="fas ${isCompleted ? 'fa-edit' : 'fa-shipping-fast'}"></i> ${isCompleted ? 'แก้ไข' : 'Shipment'}
+                        </button>`;
+                    if (!isCompleted) {
+                        actionsHtml += `
+                            <button class="btn btn-sm btn-warning btn-transfer" data-taskid="${doo.DO_Task_ID}" title="โอนงานให้คนอื่น"><i class="fas fa-exchange-alt"></i> โอนงาน</button>
+                            <button class="btn btn-sm btn-danger btn-reject" data-taskid="${doo.DO_Task_ID}" title="ปฏิเสธงานนี้"><i class="fas fa-times"></i> ปฏิเสธ</button>`;
+                    }
+                }
+
+                const rowClass = isCompleted ? 'status-completed' : (isEditedBySaleAdmin ? 'status-edited' : '');
+                const rowHtml = `<tr class="${rowClass}">
+                    <td>${formatTimestamp(doo.Dispatcher_DO_Confirm_Timestamp, 'time')}</td>
+                    <td>${formatTimestamp(doo.Delivery_Date, 'date')}</td>
+                    <td>${escapeHtml(doo.Branch)}</td>
+                    <td>${escapeHtml(doo.SAP_DO_Number)}</td>
+                    <td class="col-remarks">${escapeHtml(doo.Sales_Admin_Remarks)}</td>
+                    <td>${escapeHtml(doo.Dispatcher_Shipment_Qty)}</td>
+                    <td class="col-remarks">${escapeHtml(doo.Dispatcher_Notes)}</td>
+                    <td>${formatTimestamp(doo.Dispatcher_Shipment_Confirm_Timestamp, 'time')}</td>
+                    <td><span class="badge ${getStatusBadgeClass(doo.Overall_Status)}">${escapeHtml(doo.Overall_Status)}</span></td>
+                    <td><div class="action-buttons-group">${actionsHtml}</div></td></tr>`;
+                tbody.append(rowHtml);
+            });
+        }
+
+        function handleAction(actionName, payload, successMessage, modalToHide = null) {
+            const fullPayload = { action: actionName, ...payload };
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (res.success) {
+                        displayMessage('messageContainer', 'success', successMessage || res.message);
+                        if(modalToHide) $(modalToHide).modal('hide');
+                        loadAllData();
+                        loadNotifications();
+                    } else {
+                        displayMessage(modalToHide ? `${modalToHide.replace('#', '')}Message` : 'messageContainer', 'warning', res.message);
+                    }
+                })
+                .withFailureHandler(err => displayMessage(modalToHide ? `${modalToHide.replace('#', '')}Message` : 'messageContainer', 'danger', `Action failed: ${err.message}`))
+                .handleDispatcherAction(currentUser.token, fullPayload);
+        }
+
+        function startAutoRefresh() {
+            if (autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
+            autoRefreshIntervalId = setInterval(() => {
+                loadAllData();
+                loadNotifications();
+            }, AUTO_REFRESH_INTERVAL);
+            $('#autoRefreshStatus').html(`<span class="badge badge-success"><i class="fas fa-sync-alt fa-spin"></i> Auto-refresh ON</span>`);
+        }
+        function stopAutoRefresh() {
+            if (autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
+            autoRefreshIntervalId = null;
+            $('#autoRefreshStatus').html('');
+        }
+
+        $(document).ready(function() {
+            const flatpickrConfig = { dateFormat: "Y-m-d", altInput: true, altFormat: "d/m/Y" };
+            flatpickr("#filterSalesAdminDate", {...flatpickrConfig, defaultDate: "today"});
+            flatpickr("#filterDeliveryDateStart", flatpickrConfig);
+            flatpickr("#filterDeliveryDateEnd", flatpickrConfig);
+
+            checkInitialLoginStatus();
+
+            $('#notificationDropdown').on('click', function() {
+                const notificationCount = parseInt($('#notificationCount').text(), 10);
+                if (notificationCount > 0) {
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            if (response.success) {
+                                $('#notificationCount').text('0').hide();
+                            } else {
+                                console.error("Failed to mark notifications as read:", response.message);
+                            }
+                        })
+                        .markNotificationsAsRead(currentUser.token);
+                }
+            });
+
+            $('#logoutButton').on('click', handleLogout);
+            $('#applyFilterButton, #manualRefreshButton').on('click', loadAllData);
+
+            $('#clearFilterButton').on('click', () => {
+                document.querySelector("#filterSalesAdminDate")._flatpickr.setDate(new Date());
+                document.querySelector("#filterDeliveryDateStart")._flatpickr.clear();
+                document.querySelector("#filterDeliveryDateEnd")._flatpickr.clear();
+                $('#filterStatus').val('');
+                $('#filterBranch').val('');
+                loadAllData();
+            });
+
+            $('#confirmLogoutRedirectButton').on('click', () => window.top.location.href = "<?= ScriptApp.getService().getUrl(); ?>");
+
+            // --- Action Buttons ---
+            $('#pendingDOsBody').on('click', '.btn-acknowledge', function() { handleAction('acknowledge', { taskId: $(this).data('taskid') }, 'รับงานสำเร็จ'); });
+            $('body').on('click', '.btn-reject', function() { $('#rejectTaskId').val($(this).data('taskid')); $('#rejectionReason').val(''); $('#rejectModal').modal('show'); });
+
+            $('body').on('click', '.btn-confirm-shipment', function() {
+                const btn = $(this);
+                const isCompleted = btn.data('is-completed');
+                $('#shipmentForm')[0].reset();
+                $('#shipmentTaskId').val(btn.data('taskid'));
+                $('#shipmentQty').val(btn.data('qty'));
+                $('#shipmentNotes').val(btn.data('notes'));
+
+                if (isCompleted) {
+                    $('#shipmentModalTitle').text('แก้ไข Shipment');
+                    $('#editReasonGroup').show();
+                } else {
+                    $('#shipmentModalTitle').text('ยืนยัน Shipment');
+                    $('#editReasonGroup').hide();
+                }
+                $('#shipmentModal').modal('show');
+            });
+
+            $('body').on('click', '.btn-transfer', function() { $('#transferTaskId').val($(this).data('taskid')); $('#transferNote').val(''); $('#transferModal').modal('show'); });
+
+            // NEW: Handler for acknowledging sales admin edit
+            $('#acknowledgedDOsBody').on('click', '.btn-acknowledge-edit', function() {
+                handleAction('acknowledgeSaleAdminEdit', { taskId: $(this).data('taskid') }, 'รับทราบการแก้ไขสำเร็จ');
+            });
+
+            // --- Modal Confirm Buttons ---
+            $('#confirmRejectButton').on('click', function() { handleAction('reject', { taskId: $('#rejectTaskId').val(), reason: $('#rejectionReason').val().trim() }, 'ปฏิเสธงานสำเร็จ', '#rejectModal'); });
+            $('#confirmShipmentButton').on('click', function() {
+                const formData = {
+                    task_id_shipment: $('#shipmentTaskId').val(),
+                    shipment_qty: $('#shipmentQty').val(),
+                    shipment_notes: $('#shipmentNotes').val(),
+                    edit_reason: $('#shipmentEditReason').val()
+                };
+                handleAction('shipment', { formData: formData }, 'บันทึก Shipment สำเร็จ', '#shipmentModal');
+            });
+            $('#confirmTransferButton').on('click', function() { handleAction('transfer', { taskId: $('#transferTaskId').val(), note: $('#transferNote').val() }, 'โอนงานสำเร็จ', '#transferModal'); });
+
+            // --- Settings Modal ---
+            $('#settingsButton').on('click', () => {
+                $('#settingsMessageContainer').html('');
+                $('#displayNameForm')[0].reset();
+                $('#passwordForm')[0].reset();
+                $('#newDisplayName').val(currentUser.displayName);
+                $('#settingsModal').modal('show');
+            });
+
+            $('#saveDisplayNameButton').on('click', function() {
+                const btn = $(this).prop('disabled', true);
+                const newName = $('#newDisplayName').val();
+                google.script.run
+                    .withSuccessHandler(res => {
+                        btn.prop('disabled', false);
+                        if (res.success) {
+                            displayMessage('#settingsMessageContainer', 'success', res.message);
+                            currentUser.displayName = res.newDisplayName;
+                            $('#userDisplayName').text(escapeHtml(currentUser.displayName));
+                        } else {
+                            displayMessage('#settingsMessageContainer', 'danger', res.message);
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        btn.prop('disabled', false);
+                        displayMessage('#settingsMessageContainer', 'danger', err.message);
+                    })
+                    .updateUserDisplayName(currentUser.token, newName);
+            });
+
+            $('#savePasswordButton').on('click', function() {
+                const btn = $(this).prop('disabled', true);
+                const oldPw = $('#oldPassword').val();
+                const newPw = $('#newPassword').val();
+                const confirmPw = $('#confirmNewPassword').val();
+
+                if (newPw !== confirmPw) {
+                    displayMessage('#settingsMessageContainer', 'danger', 'รหัสผ่านใหม่และการยืนยันไม่ตรงกัน');
+                    btn.prop('disabled', false);
+                    return;
+                }
+
+                google.script.run
+                    .withSuccessHandler(res => {
+                        btn.prop('disabled', false);
+                        displayMessage('#settingsMessageContainer', res.success ? 'success' : 'danger', res.message);
+                        if(res.success) $('#passwordForm')[0].reset();
+                    })
+                    .withFailureHandler(err => {
+                        btn.prop('disabled', false);
+                        displayMessage('#settingsMessageContainer', 'danger', err.message);
+                    })
+                    .changePassword(currentUser.token, oldPw, newPw);
+            });
+        });
+    </script>
+</body>
+</html>

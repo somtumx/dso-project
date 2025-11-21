@@ -23,7 +23,7 @@ async function initDb() {
     `);
     console.log('Created users table');
 
-    // Create dos table
+    // Create dos table (Updated schema to match frontend needs)
     await db.query(`
       CREATE TABLE dos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,6 +32,16 @@ async function initDb() {
         delivery_date DATE,
         sales_admin_remarks TEXT,
         overall_status VARCHAR(100),
+        sales_admin_name VARCHAR(255),
+        sales_admin_email VARCHAR(255),
+        dispatcher_name VARCHAR(255),
+        dispatcher_email VARCHAR(255),
+        dispatcher_ack_time TIMESTAMP,
+        shipment_qty VARCHAR(100),
+        dispatcher_notes TEXT,
+        shipment_time TIMESTAMP,
+        rejection_reason TEXT,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <title>DSO - Admin Panel</title>
+    <!-- Included Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Bootstrap and Font Awesome -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* Custom styles for notification bell */
+        .navbar.custom-navbar .nav-item.dropdown .nav-link .badge {
+            position: absolute;
+            top: 8px;
+            right: 0px;
+            font-size: 0.6rem;
+            padding: 2px 5px;
+        }
+        .dropdown-menu .dropdown-item {
+            white-space: normal; /* Allow text wrapping */
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light custom-navbar">
+        <a class="navbar-brand" href="/">
+            <img src="https://lh3.googleusercontent.com/d/1BMQcxehcCywryLdT8G7BC7SJtA0p8RWe" alt="Company Logo">
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/" title="กลับไปยังหน้าหลัก"><i class="fas fa-home"></i> Home</a>
+                </li>
+                <li class="nav-item" id="adminDispatcherNavButton" style="display: none;">
+                    <a class="nav-link" href="/dispatcher.html" title="หน้าจัดการสำหรับ Dispatcher"><i class="fas fa-truck"></i> Dispatcher View</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav ml-auto user-actions align-items-center">
+                <li class="nav-item dropdown" id="notificationBellContainer" style="display: none;">
+                    <a class="nav-link dropdown-toggle text-white position-relative" href="#" id="notificationDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="การแจ้งเตือน">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge badge-danger" id="notificationCount" style="display: none;">0</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="notificationDropdown" id="notificationList" style="min-width: 350px; max-height: 400px; overflow-y: auto;">
+                        <!-- Notifications will be populated here -->
+                    </div>
+                </li>
+                <li class="nav-item" id="userInfo" style="display: none;">
+                    <span class="navbar-text mr-3">สวัสดี, คุณ <strong id="userDisplayName"></strong></span>
+                </li>
+                 <li class="nav-item" id="logoutNavButton" style="display: none;">
+                    <button class="btn btn-logout" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container-fluid content-wrapper">
+        <div id="messageContainer"></div>
+        <div id="admin-panel-content" class="d-none">
+            <!-- Header for Admin Page -->
+            <div class="page-header">
+                <h2><i class="fas fa-user-shield"></i> แผงควบคุมผู้ดูแลระบบ</h2>
+                <p>จัดการข้อมูลผู้ใช้ในระบบ</p>
+            </div>
+
+            <!-- Users Table -->
+            <div class="table-section mt-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3><i class="fas fa-users"></i> รายชื่อผู้ใช้</h3>
+                    <div>
+                        <button id="addNewUserButton" class="btn btn-sm btn-success"><i class="fas fa-user-plus"></i> เพิ่มผู้ใช้ใหม่</button>
+                        <button id="refreshUsersButton" class="btn btn-sm btn-primary"><i class="fas fa-sync-alt"></i> รีเฟรช</button>
+                    </div>
+                </div>
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped table-bordered table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>ชื่อที่แสดง</th>
+                                <th>บทบาท (Role)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- (All Modals: Edit User, Add New User) are unchanged -->
+    <div class="modal fade" id="editUserModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="editUserModalLabel">แก้ไขผู้ใช้</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><div id="editUserMessageContainer"></div><form id="editUserForm"><input type="hidden" id="editUserEmail"><div class="form-group"><label>Email</label><input type="text" class="form-control" id="staticUserEmail" readonly></div><div class="form-group"><label for="editDisplayName">ชื่อที่แสดง</label><input type="text" class="form-control" id="editDisplayName" required></div><div class="form-group"><label for="editUserRole">บทบาท (Role)</label><select class="form-control" id="editUserRole" required><option value="Sales Admin">Sales Admin</option><option value="Dispatcher">Dispatcher</option><option value="Admin">Admin</option></select></div><hr><div class="form-group"><label for="resetPassword">รีเซ็ตรหัสผ่านใหม่ (ทิ้งว่างไว้หากไม่ต้องการเปลี่ยน)</label><input type="password" class="form-control" id="resetPassword" placeholder="กรอกรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร"></div></form></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-primary" id="saveUserButton">บันทึกการเปลี่ยนแปลง</button></div></div></div></div>
+    <div class="modal fade" id="newUserModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="newUserModalLabel">เพิ่มผู้ใช้ใหม่</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><div id="newUserMessageContainer"></div><form id="newUserForm"><div class="form-group"><label for="newEmail">Email</label><input type="email" class="form-control" id="newEmail" required></div><div class="form-group"><label for="newDisplayName">ชื่อที่แสดง</label><input type="text" class="form-control" id="newDisplayName" required></div><div class="form-group"><label for="newPassword">รหัสผ่าน</label><input type="password" class="form-control" id="newPassword" required></div><div class="form-group"><label for="newUserRole">บทบาท (Role)</label><select class="form-control" id="newUserRole" required><option value="Sales Admin" selected>Sales Admin</option><option value="Dispatcher">Dispatcher</option><option value="Admin">Admin</option></select></div></form></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-success" id="saveNewUserButton">สร้างผู้ใช้</button></div></div></div></div>
+
+    <!-- Bootstrap/jQuery JS from CDN -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" crossorigin="anonymous"></script>
+
+    <script>
+        let currentUser = { loggedIn: false, email: '', role: '', displayName: '', token: null };
+
+        function escapeHtml(unsafe) {
+            if (unsafe === null || typeof unsafe === 'undefined') return '';
+            return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        }
+
+        function displayMessage(container, type, text) {
+            const alertClass = `alert-${type}`;
+            const icon = type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>';
+            $(container).html(`<div class="alert ${alertClass}" role="alert">${icon} ${escapeHtml(text)}</div>`);
+        }
+
+        // ADDED: formatTimestamp for notification display
+        function formatTimestamp(ts, type = 'datetime') {
+            if (!ts || ts === '-') return '-';
+            try {
+                const date = new Date(ts);
+                if (isNaN(date.getTime())) return '-';
+                const options = { timeZone: 'Asia/Bangkok' };
+                if (type === 'date') { return date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', ...options }); }
+                if (type === 'time') { return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false, ...options }); }
+                const datePart = date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', ...options });
+                const timePart = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false, ...options });
+                return `${datePart} ${timePart}`;
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        // ADDED: Notification bell update function
+        function updateNotificationBell(notifications = []) {
+            const notificationCountBadge = $('#notificationCount');
+            const notificationList = $('#notificationList');
+
+            const unreadCount = notifications.length;
+            notificationCountBadge.text(unreadCount > 0 ? unreadCount : '').toggle(unreadCount > 0);
+
+            notificationList.empty();
+            notificationList.append('<h6 class="dropdown-header">การแจ้งเตือนล่าสุด (20 รายการ)</h6>');
+
+            if (notifications.length > 0) {
+                notifications.forEach(note => {
+                    const message = `${note.DisplayName} เปลี่ยนสถานะงาน #${note.DO_Task_ID} เป็น <b>${note.Status_New}</b>`;
+                    const itemHtml = `
+                        <div class="dropdown-item" style="white-space: normal; cursor: default;">
+                            <small>${message}</small><br>
+                            <small class="text-muted">${formatTimestamp(note.Change_Status_Time)}</small>
+                        </div>`;
+                    notificationList.append(itemHtml);
+                });
+            } else {
+                notificationList.append('<div class="dropdown-item text-center text-muted" style="cursor: default;">ไม่มีการแจ้งเตือน</div>');
+            }
+        }
+
+        // ADDED: Function to load notifications
+        function loadNotifications() {
+            if (!currentUser.loggedIn) return;
+            google.script.run
+                .withSuccessHandler(response => {
+                    if (response.success) {
+                        updateNotificationBell(response.data);
+                    }
+                })
+                .getNotificationsForUser(currentUser.token);
+        }
+
+        function loadAllUsers() {
+            const tableBody = $("#usersTableBody");
+            tableBody.html(`<tr><td colspan="4" class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading users...</td></tr>`);
+
+            google.script.run
+                .withSuccessHandler(response => {
+                    if(response.success) {
+                        renderUsersTable(response.data);
+                    } else {
+                        tableBody.html(`<tr><td colspan="4" class="text-center text-danger">Error: ${escapeHtml(response.message)}</td></tr>`);
+                    }
+                })
+                .withFailureHandler(err => {
+                    tableBody.html(`<tr><td colspan="4" class="text-center text-danger">Error: ${escapeHtml(err.message)}</td></tr>`);
+                })
+                .getAllUsers(currentUser.token);
+        }
+
+        function renderUsersTable(users) {
+            const tbody = $('#usersTableBody');
+            tbody.empty();
+            if (!users || users.length === 0) {
+                tbody.html(`<tr><td colspan="4" class="text-center">No users found.</td></tr>`);
+                return;
+            }
+
+            users.forEach(user => {
+                const row = `
+                    <tr>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td>${escapeHtml(user.displayName)}</td>
+                        <td>${escapeHtml(user.role)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning btn-edit-user"
+                                    data-email="${escapeHtml(user.email)}"
+                                    data-displayname="${escapeHtml(user.displayName)}"
+                                    data-role="${escapeHtml(user.role)}">
+                                <i class="fas fa-edit"></i> แก้ไข
+                            </button>
+                        </td>
+                    </tr>`;
+                tbody.append(row);
+            });
+        }
+
+        function checkAdminAccess() {
+            const token = localStorage.getItem('userToken');
+            if (!token) {
+                showAccessDenied("Your session is invalid or has expired. Please log in again.");
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(session => {
+                    if (session.success && session.loggedIn) {
+                         if (session.user.role === 'Admin') {
+                            currentUser = { ...session.user, loggedIn: true, token: token };
+                            $('#userDisplayName').text(escapeHtml(currentUser.displayName));
+                            $('#userInfo, #logoutNavButton, #adminDispatcherNavButton, #notificationBellContainer').show();
+                            $('#admin-panel-content').removeClass('d-none');
+                            loadAllUsers();
+                            loadNotifications(); // MODIFIED: Load notifications for admin
+                        } else {
+                            showAccessDenied(`Access Denied. Your role is '${session.user.role}', but 'Admin' role is required.`);
+                        }
+                    } else {
+                        showAccessDenied(session.message || "Your session is invalid or has expired. Please log in again.");
+                    }
+                })
+                .withFailureHandler(err => {
+                    showAccessDenied(err.message);
+                })
+                .getUserDetailsFromToken(token);
+        }
+
+        function showAccessDenied(message = "You do not have permission to view this page.") {
+             $('.content-wrapper').html(`<div class="alert alert-danger"><h1><i class="fas fa-exclamation-triangle"></i> Access Denied</h1><p>${escapeHtml(message)} Please log in with an administrator account.</p><a href="/" class="btn btn-primary">Go to Home Page</a></div>`);
+        }
+
+        $(document).ready(function() {
+            checkAdminAccess();
+
+            // ADDED: Click handler for notification bell
+            $('#notificationDropdown').on('click', function() {
+                const notificationCount = parseInt($('#notificationCount').text(), 10);
+                if (notificationCount > 0) {
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            if (response.success) {
+                                // Hide the badge immediately for better UX
+                                $('#notificationCount').text('0').hide();
+                            } else {
+                                console.error("Failed to mark notifications as read:", response.message);
+                            }
+                        })
+                        .markNotificationsAsRead(currentUser.token);
+                }
+            });
+
+            $('#refreshUsersButton').on('click', loadAllUsers);
+
+            $('#logoutButton').on('click', () => {
+                 google.script.run.withSuccessHandler(() => {
+                    localStorage.removeItem('userToken');
+                    window.top.location.href = "/";
+                 }).logoutUser(currentUser.token);
+            });
+
+            $('#usersTableBody').on('click', '.btn-edit-user', function() {
+                const btn = $(this);
+                $('#editUserMessageContainer').html('');
+                $('#editUserForm')[0].reset();
+                $('#editUserEmail').val(btn.data('email'));
+                $('#staticUserEmail').val(btn.data('email'));
+                $('#editDisplayName').val(btn.data('displayname'));
+                $('#editUserRole').val(btn.data('role'));
+                $('#editUserModal').modal('show');
+            });
+
+            $('#saveUserButton').on('click', function() {
+                const btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
+                const userData = {
+                    email: $('#editUserEmail').val(),
+                    displayName: $('#editDisplayName').val(),
+                    role: $('#editUserRole').val(),
+                    newPassword: $('#resetPassword').val() || null
+                };
+
+                if (userData.newPassword && userData.newPassword.length < 6) {
+                    displayMessage('#editUserMessageContainer', 'danger', "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
+                    btn.prop('disabled', false).text('บันทึกการเปลี่ยนแปลง');
+                    return;
+                }
+
+                google.script.run
+                    .withSuccessHandler(res => {
+                        btn.prop('disabled', false).text('บันทึกการเปลี่ยนแปลง');
+                        if (res.success) {
+                            $('#editUserModal').modal('hide');
+                            displayMessage('#messageContainer', 'success', res.message);
+                            loadAllUsers();
+                        } else {
+                            displayMessage('#editUserMessageContainer', 'danger', res.message);
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        btn.prop('disabled', false).text('บันทึกการเปลี่ยนแปลง');
+                        displayMessage('#editUserMessageContainer', 'danger', err.message);
+                    })
+                    .adminUpdateUser(currentUser.token, userData);
+            });
+
+            $('#addNewUserButton').on('click', function() {
+                $('#newUserMessageContainer').html('');
+                $('#newUserForm')[0].reset();
+                $('#newUserModal').modal('show');
+            });
+
+            $('#saveNewUserButton').on('click', function() {
+                const btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Creating...');
+                const newUser = {
+                    email: $('#newEmail').val(),
+                    displayName: $('#newDisplayName').val(),
+                    password: $('#newPassword').val(),
+                    role: $('#newUserRole').val()
+                };
+
+                if (!newUser.email || !newUser.displayName || !newUser.password || !newUser.role) {
+                    displayMessage('#newUserMessageContainer', 'danger', "กรุณากรอกข้อมูลให้ครบทุกช่อง");
+                    btn.prop('disabled', false).text('สร้างผู้ใช้');
+                    return;
+                }
+                if (newUser.password.length < 6) {
+                    displayMessage('#newUserMessageContainer', 'danger', "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+                    btn.prop('disabled', false).text('สร้างผู้ใช้');
+                    return;
+                }
+
+                google.script.run
+                    .withSuccessHandler(res => {
+                        btn.prop('disabled', false).text('สร้างผู้ใช้');
+                        if (res.success) {
+                            $('#newUserModal').modal('hide');
+                            displayMessage('#messageContainer', 'success', res.message);
+                            loadAllUsers();
+                        } else {
+                            displayMessage('#newUserMessageContainer', 'danger', res.message);
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        btn.prop('disabled', false).text('สร้างผู้ใช้');
+                        displayMessage('#newUserMessageContainer', 'danger', err.message);
+                    })
+                    .adminCreateUser(currentUser.token, newUser);
+            });
+        });
+    </script>
+</body>
+</html>

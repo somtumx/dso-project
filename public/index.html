@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <title>DSO - ติดตามสถานะ</title>
+    <!-- Included Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Bootstrap and Font Awesome -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Flatpickr Date Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+        .filter-group > * { flex-shrink: 0; }
+        .page-header .d-flex { gap: 1rem; }
+        .task-details-link { cursor: pointer; color: #007bff; text-decoration: underline; }
+        .task-details-link:hover { color: #0056b3; }
+        .info-icon { cursor: pointer; color: #17a2b8; margin-left: 5px; }
+
+        /* Styles for the new details modal */
+        .modal-body h5 {
+            color: #c82333; /* Main color for headers */
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 0.5rem;
+            margin-top: 1.25rem;
+            margin-bottom: 1rem;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .modal-body h5:first-child {
+            margin-top: 0;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 0.75rem 1.5rem; /* row-gap column-gap */
+        }
+        .detail-grid-item p {
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        .detail-grid-item p strong {
+            font-weight: 600;
+            color: #495057;
+            margin-right: 10px;
+        }
+        .detail-grid-item p span {
+            text-align: right;
+            color: #212529;
+        }
+        .notes-section {
+            margin-top: 0.5rem;
+        }
+        .notes-section strong {
+            font-weight: 600;
+            color: #495057;
+        }
+        .notes-section p {
+            background-color: #f8f9fa;
+            border-left: 4px solid #c82333;
+            border-radius: 0.25rem;
+            padding: 0.75rem;
+            min-height: 40px;
+            color: #212529;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light custom-navbar">
+        <a class="navbar-brand" href="/">
+            <img src="https://lh3.googleusercontent.com/d/1BMQcxehcCywryLdT8G7BC7SJtA0p8RWe" alt="Company Logo">
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                 <li class="nav-item active">
+                    <a class="nav-link" href="/" title="กลับไปยังหน้าหลัก"><i class="fas fa-home"></i> Home <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item role-restricted" id="dispatcherNavButton" style="display: none;">
+                    <a class="nav-link" href="/dispatcher.html" title="หน้าจัดการสำหรับ Dispatcher"><i class="fas fa-truck"></i> Dispatcher View</a>
+                </li>
+                <li class="nav-item role-restricted" id="adminNavButton" style="display: none;">
+                    <a class="nav-link" href="/admin.html" title="แผงควบคุมผู้ดูแลระบบ"><i class="fas fa-user-shield"></i> Admin Panel</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav ml-auto user-actions align-items-center">
+                <li class="nav-item dropdown" id="notificationBellContainer" style="display: none;">
+                    <a class="nav-link dropdown-toggle text-white position-relative" href="#" id="notificationDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="การแจ้งเตือน">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge badge-danger" id="notificationCount" style="display: none;">0</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="notificationDropdown" id="notificationList" style="min-width: 350px; max-height: 400px; overflow-y: auto;"></div>
+                </li>
+                <li class="nav-item" id="userInfo" style="display: none;">
+                    <span class="navbar-text mr-3">สวัสดี, คุณ <strong id="userDisplayName"></strong></span>
+                </li>
+                <li class="nav-item" id="settingsNavButton" style="display: none;">
+                    <button class="btn btn-secondary" id="settingsButton" title="ตั้งค่า"><i class="fas fa-cog"></i></button>
+                </li>
+                <li class="nav-item" id="loginNavButton" style="display: none;">
+                    <button class="btn btn-login" id="loginButton"><i class="fas fa-sign-in-alt"></i> Login</button>
+                </li>
+                <li class="nav-item" id="logoutNavButton" style="display: none;">
+                    <button class="btn btn-logout" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container-fluid content-wrapper">
+        <div id="messageContainer"></div>
+
+        <!-- Filter Section -->
+        <div class="page-header">
+             <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div>
+                    <button id="newTaskButton" class="btn btn-success" style="display: none; font-size: 1.5rem; padding: .2rem 2rem;"><i class="fas fa-plus"></i> แจ้งงาน</button>
+                </div>
+                <div class="filter-group">
+                    <label for="filterSalesAdminDate" class="my-1" style="font-weight:normal;">วันที่แจ้งงาน:</label>
+                    <input type="text" id="filterSalesAdminDate" class="form-control form-control-sm my-1 flatpickr-input">
+                    <label for="filterDeliveryDateRange" class="my-1" style="font-weight:normal;">วันที่ส่งสินค้า:</label>
+                    <div id="customDateRange" class="d-inline-flex align-items-center">
+                        <input type="text" id="filterDeliveryDateStart" class="form-control form-control-sm my-1 flatpickr-input" placeholder="จากวันที่">
+                        <span class="mx-2 my-1">ถึง</span>
+                        <input type="text" id="filterDeliveryDateEnd" class="form-control form-control-sm my-1 flatpickr-input" placeholder="ถึงวันที่">
+                    </div>
+                    <label for="filterStatus" class="my-1" style="font-weight:normal;">สถานะ:</label>
+                    <select id="filterStatus" class="form-control form-control-sm my-1" style="width: auto;">
+                        <option value="">สถานะทั้งหมด</option>
+                        <option>รอยืนยัน DO</option>
+                        <option>โอนงาน</option>
+                        <option>รอ Sales Admin แก้ไข</option>
+                        <option>แก้ไขโดย Sale Admin</option>
+                        <option>กำลังดำเนินการ</option>
+                        <option>ดำเนินการเสร็จสิ้น</option>
+                    </select>
+                    <label for="filterBranch" class="my-1" style="font-weight:normal;">สาขา:</label>
+                    <select id="filterBranch" class="form-control form-control-sm my-1" style="width: auto;">
+                        <option value="">สาขาทั้งหมด</option>
+                    </select>
+                    <button id="applyFilterButton" class="btn btn-sm btn-info my-1"><i class="fas fa-search"></i> ใช้ตัวกรอง</button>
+                    <button id="clearFilterButton" class="btn btn-sm btn-outline-secondary my-1"><i class="fas fa-times"></i> ล้าง</button>
+                    <button id="manualRefreshButton" class="btn btn-sm btn-success my-1"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    <span id="autoRefreshStatus" class="badge badge-light my-1" title="อัปเดตข้อมูลอัตโนมัติ"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mt-4">
+            <div class="col-xl-3 col-md-6"><div id="totalTasksCard" class="summary-card bg-dark"><div class="big-number">0</div><div class="card-title">งานทั้งหมด</div></div></div>
+            <div class="col-xl-3 col-md-6"><div id="pendingReviewCard" class="summary-card bg-dark"><div class="big-number">0</div><div class="card-title">รอดำเนินการ</div></div></div>
+            <div class="col-xl-3 col-md-6"><div id="pendingShipmentCard" class="summary-card bg-dark"><div class="big-number">0</div><div class="card-title">กำลังดำเนินการ</div></div></div>
+            <div class="col-xl-3 col-md-6"><div id="completedCard" class="summary-card bg-dark"><div class="big-number">0</div><div class="card-title">ดำเนินการเสร็จสิ้น</div></div></div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="table-section mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3><i class="fas fa-tasks"></i> ติดตามสถานะงาน</h3>
+                <button id="exportToXLSXButton" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Export to Excel</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>ลำดับที่ <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="ลำดับการแจ้งงานในแต่ละวัน"></i></th>
+                            <th>หมายเลขงาน <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="หมายเลขอ้างอิงเฉพาะสำหรับแต่ละงาน กดที่หมายเลขเพื่อดูรายละเอียดเพิ่มเติม"></i></th>
+                            <th>วันที่ส่งสินค้า <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="วันที่กำหนดส่งสินค้าให้กับลูกค้า"></i></th>
+                            <th>ผู้แจ้งงาน <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="ชื่อของ Sales Admin ผู้แจ้งงาน"></i></th>
+                            <th>สาขา <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="สาขาที่รับผิดชอบในการส่งสินค้า"></i></th>
+                            <th>จำนวน Do <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="จำนวนเอกสาร Delivery Order (DO) ในงานนี้"></i></th>
+                            <th>ผู้รับงาน <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="ชื่อของ Dispatcher ที่รับผิดชอบงาน"></i></th>
+                            <th>เวลาแจ้ง <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="เวลาที่ Sales Admin สร้างงานในระบบ"></i></th>
+                            <th>จำนวน shipment <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="จำนวนการจัดส่งที่ Dispatcher ยืนยัน"></i></th>
+                            <th>สถานะล่าสุด <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="สถานะปัจจุบันของงาน"></i></th>
+                            <th>เวลาอัปเดตล่าสุด <i class="fas fa-info-circle info-icon" data-toggle="popover" title="คำแนะนำ" data-content="เวลาล่าสุดที่มีการเปลี่ยนแปลงข้อมูลของงานนี้"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Details Modal (REVISED) -->
+    <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">รายละเอียดงาน</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Section 1: Job Details -->
+                    <h5><i class="fas fa-info-circle"></i> ส่วนของรายละเอียดงาน</h5>
+                    <div class="detail-grid">
+                        <div class="detail-grid-item"><p><strong>หมายเลขงาน:</strong> <span id="detailTaskId"></span></p></div>
+                        <div class="detail-grid-item"><p><strong>สาขา:</strong> <span id="detailBranch"></span></p></div>
+                        <div class="detail-grid-item"><p><strong>รอบส่ง:</strong> <span id="detailDeliveryDate"></span></p></div>
+                        <div class="detail-grid-item"><p><strong>จำนวน Do:</strong> <span id="detailSapDo"></span></p></div>
+                        <div class="detail-grid-item"><p><strong>ผู้แจ้งงาน:</strong> <span id="detailRequesterName"></span></p></div>
+                    </div>
+
+                    <!-- Section 2: Processing Status -->
+                    <h5><i class="fas fa-tasks"></i> สถานะการดำเนินการ</h5>
+                    <div class="detail-grid">
+                        <div class="detail-grid-item"><p><strong>ผู้รับงาน:</strong> <span id="detailDispatcherName"></span></p></div>
+                        <div class="detail-grid-item"><p><strong>เวลาแจ้งงาน:</strong> <span id="detailCreatedTime"></span></p></div>
+                        <div class="detail-grid-item"><p><strong>เวลารับงาน:</strong> <span id="detailAckTime"></span></p></div>
+                        <div class="detail-grid-item"><p><strong>เวลาออก shipment:</strong> <span id="detailShipTime"></span></p></div>
+                        <div class="detail-grid-item"><p><strong>สถานะล่าสุด:</strong> <span id="detailStatus"></span></p></div>
+                    </div>
+                    <div class="notes-section">
+                        <strong>หมายเหตุปฏิเสธ:</strong>
+                        <p id="detailRejectionReason">-</p>
+                    </div>
+
+                    <!-- Section 3: Shipment -->
+                    <h5><i class="fas fa-truck"></i> ส่วนของ Shipment</h5>
+                    <div class="detail-grid">
+                        <div class="detail-grid-item"><p><strong>จำนวน Shipment:</strong> <span id="detailShipmentQty"></span></p></div>
+                    </div>
+                    <div class="notes-section">
+                        <strong>รายละเอียด Shipment เพิ่มเติม:</strong>
+                        <p id="detailsModalShipmentNotes">-</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">ปิด</button>
+                    <button type="button" class="btn btn-warning" id="detailsModalEditButton" style="display: none;"><i class="fas fa-edit"></i> แก้ไขหมายเหตุ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Modals (Unchanged) -->
+    <div class="modal fade" id="loginModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="fas fa-sign-in-alt"></i> เข้าสู่ระบบ</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><div id="loginMessageContainer"></div><form id="loginForm"><div class="form-group"><label for="email">Email</label><input type="email" class="form-control" id="email" required></div><div class="form-group"><label for="password">Password</label><input type="password" class="form-control" id="password" required></div></form></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-primary" id="confirmLoginButton">Login</button></div></div></div></div>
+    <div class="modal fade" id="taskModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="taskModalLabel"></h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><div id="taskMessageContainer"></div><form id="taskForm"><input type="hidden" id="editingTaskId"><div class="form-group"><label for="sap_do_number">จำนวน DO</label><input type="text" class="form-control" id="sap_do_number" required></div><div class="form-group"><label for="branch">สาขา</label><select class="form-control" id="branch" required></select></div><div class="form-group"><label for="delivery_date">วันที่ส่งสินค้า</label><input type="text" class="form-control" id="delivery_date" required></div><div class="form-group"><label for="sales_remarks">หมายเหตุ</label><textarea class="form-control" id="sales_remarks" rows="3"></textarea></div><div class="form-check" id="new-task-confirm-check"><input type="checkbox" class="form-check-input" id="confirm_submission" required><label class="form-check-label" for="confirm_submission">ยืนยันว่าข้อมูลถูกต้อง</label></div></form></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-primary" id="saveTaskButton">บันทึก</button></div></div></div></div>
+    <div class="modal fade modal-success" id="loginSuccessModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><i class="fas fa-check-circle text-success fa-3x mb-3"></i><h4>เข้าสู่ระบบสำเร็จ</h4></div></div></div></div>
+    <div class="modal fade modal-success" id="logoutSuccessModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><i class="fas fa-check-circle text-info fa-3x mb-3"></i><h4>ออกจากระบบสำเร็จ</h4></div></div></div></div>
+    <div class="modal fade" id="settingsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="fas fa-cog"></i> ตั้งค่าบัญชี</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><div id="settingsMessageContainer"></div><ul class="nav nav-tabs"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#displayNameTab">เปลี่ยนชื่อที่แสดง</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href="#passwordTab">เปลี่ยนรหัสผ่าน</a></li></ul><div class="tab-content pt-3"><div class="tab-pane container active" id="displayNameTab"><form id="displayNameForm"><div class="form-group"><label for="newDisplayName">ชื่อที่แสดงใหม่</label><input type="text" class="form-control" id="newDisplayName" required></div><button type="button" class="btn btn-primary" id="saveDisplayNameButton">บันทึก</button></form></div><div class="tab-pane container fade" id="passwordTab"><form id="passwordForm"><div class="form-group"><label for="oldPassword">รหัสผ่านปัจจุบัน</label><input type="password" class="form-control" id="oldPassword" required></div><div class="form-group"><label for="newPassword">รหัสผ่านใหม่</label><input type="password" class="form-control" id="newPassword" required></div><div class="form-group"><label for="confirmNewPassword">ยืนยันรหัสผ่านใหม่</label><input type="password" class="form-control" id="confirmNewPassword" required></div><button type="button" class="btn btn-primary" id="savePasswordButton">เปลี่ยนรหัสผ่าน</button></form></div></div></div></div></div>
+
+    <!-- JS Libraries -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="js/mock-gas.js"></script>
+
+    <script>
+        let currentUser = { loggedIn: false, email: '', role: '', displayName: '', token: null };
+        let allTasksData = [];
+        const AUTO_REFRESH_INTERVAL = 60000;
+        let autoRefreshIntervalId = null;
+
+        function escapeHtml(unsafe) { if (unsafe === null || typeof unsafe === 'undefined') return ''; return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+        function formatTimestamp(ts, type = 'datetime') { if (!ts || ts === '-') return '-'; try { const date = new Date(ts); if (isNaN(date.getTime())) return '-'; const options = { timeZone: 'Asia/Bangkok' }; if (type === 'date') { return date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', ...options }); } if (type === 'time') { return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false, ...options }); } const datePart = date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', ...options }); const timePart = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false, ...options }); return `${datePart} ${timePart}`; } catch (e) { return '-'; } }
+        function displayMessage(container, type, text, isModal = false) { const alertClass = `alert-${type}`; const icon = type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>'; const messageDiv = $(container); const dismissButton = isModal ? '' : '<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>'; messageDiv.html(`<div class="alert ${alertClass} ${isModal ? '' : 'alert-dismissible fade show'}" role="alert">${icon} ${escapeHtml(text)}${dismissButton}</div>`); }
+
+        function updateNotificationBell(notifications = []) {
+            const unreadCount = notifications.length;
+            $('#notificationCount').text(unreadCount > 0 ? unreadCount : '').toggle(unreadCount > 0);
+            const notificationList = $('#notificationList').empty().append('<h6 class="dropdown-header">การแจ้งเตือนล่าสุด</h6>');
+            if (notifications.length > 0) {
+                notifications.forEach(note => {
+                    let message = `${note.DisplayName} เปลี่ยนสถานะงาน #${note.DO_Task_ID} เป็น <b>${note.Status_New}</b>`;
+                    if (note.Status_New === 'Sales Admin แก้ไขหมายเหตุ') {
+                        message = `${note.DisplayName} ได้แก้ไขหมายเหตุในงาน #${note.DO_Task_ID}`;
+                    }
+                    notificationList.append(`<div class="dropdown-item" style="white-space: normal; cursor: default;"><small>${message}</small><br><small class="text-muted">${formatTimestamp(note.Change_Status_Time)}</small></div>`);
+                });
+            } else {
+                notificationList.append('<div class="dropdown-item text-center text-muted" style="cursor: default;">ไม่มีการแจ้งเตือน</div>');
+            }
+        }
+
+        function loadNotifications() {
+            if (!currentUser.loggedIn) return;
+            google.script.run.withSuccessHandler(response => { if (response.success) updateNotificationBell(response.data); }).getNotificationsForUser(currentUser.token);
+        }
+
+        function updateUIForLoginStatus() {
+            $('#dispatcherNavButton, #adminNavButton, #newTaskButton').hide();
+            $('#loginNavButton').show();
+            $('#userInfo, #logoutNavButton, #settingsNavButton, #notificationBellContainer').hide();
+
+            if (currentUser.loggedIn) {
+                $('#userDisplayName').text(escapeHtml(currentUser.displayName));
+                $('#userInfo, #logoutNavButton, #settingsNavButton, #notificationBellContainer').show();
+                $('#loginNavButton').hide();
+                if (currentUser.role === 'Admin') $('#dispatcherNavButton, #adminNavButton, #newTaskButton').show();
+                else if (currentUser.role === 'Dispatcher') $('#dispatcherNavButton').show();
+                else if (currentUser.role === 'Sales Admin') $('#newTaskButton').show();
+            }
+        }
+
+        function startAutoRefresh() {
+            if (autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
+            autoRefreshIntervalId = setInterval(() => {
+                loadAllData(false);
+                if (currentUser.loggedIn) loadNotifications();
+            }, AUTO_REFRESH_INTERVAL);
+            $('#autoRefreshStatus').html(`<span class="badge badge-success"><i class="fas fa-sync-alt fa-spin"></i> Auto-refresh ON</span>`);
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
+            autoRefreshIntervalId = null;
+            $('#autoRefreshStatus').html('');
+        }
+
+
+        function loadAllData(resetFilters = false) {
+            const tableBody = $("#tasksTableBody");
+            tableBody.html(`<tr><td colspan="11" class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>`);
+
+            const filters = {
+                salesAdminDate: $('#filterSalesAdminDate').val() || null,
+                deliveryDateStart: $('#filterDeliveryDateStart').val() || null,
+                deliveryDateEnd: $('#filterDeliveryDateEnd').val() || null,
+                status: $('#filterStatus').val() || null,
+                branch: $('#filterBranch').val() || null
+            };
+
+            google.script.run
+                .withSuccessHandler(response => {
+                    if(response.success) {
+                        allTasksData = response.data;
+                        renderTable();
+                        updateSummaryCards(response.data);
+                    } else {
+                        tableBody.html(`<tr><td colspan="11" class="text-center text-danger">Error: ${escapeHtml(response.message)}</td></tr>`);
+                    }
+                })
+                .withFailureHandler(err => tableBody.html(`<tr><td colspan="11" class="text-center text-danger">Error: ${escapeHtml(err.message)}</td></tr>`))
+                .getAllDOs(currentUser.token, filters);
+        }
+
+        function renderTable() {
+            const tbody = $('#tasksTableBody').empty();
+            if (!allTasksData || allTasksData.length === 0) {
+                tbody.html(`<tr><td colspan="11" class="text-center">ไม่มีข้อมูลที่ตรงกับตัวกรอง</td></tr>`);
+                return;
+            }
+
+            const sortedData = [...allTasksData].sort((a, b) => {
+                const idA = parseInt(a.DO_Task_ID, 10) || 0;
+                const idB = parseInt(b.DO_Task_ID, 10) || 0;
+                return idB - idA;
+            });
+
+            sortedData.forEach((doo, index) => {
+                const sequenceNumber = sortedData.length - index;
+                const rowHtml = `<tr>
+                    <td>${sequenceNumber}</td>
+                    <td><a href="#" class="task-details-link" data-task-id="${escapeHtml(doo.DO_Task_ID)}">${escapeHtml(doo.DO_Task_ID)}</a></td>
+                    <td>${formatTimestamp(doo.Delivery_Date, 'date')}</td>
+                    <td>${escapeHtml(doo.Sales_Admin_Name)}</td>
+                    <td>${escapeHtml(doo.Branch)}</td>
+                    <td>${escapeHtml(doo.SAP_DO_Number)}</td>
+                    <td>${escapeHtml(doo.Dispatcher_Name_DO) || '-'}</td>
+                    <td>${formatTimestamp(doo.Sales_Admin_Timestamp, 'time')}</td>
+                    <td>${escapeHtml(doo.Dispatcher_Shipment_Qty) || '-'}</td>
+                    <td><span class="badge ${getStatusBadgeClass(doo.Overall_Status)}">${escapeHtml(doo.Overall_Status)}</span></td>
+                    <td>${formatTimestamp(doo.Last_Updated, 'time')}</td>
+                </tr>`;
+                tbody.append(rowHtml);
+            });
+        }
+
+        function getStatusBadgeClass(status) {
+            switch(status) {
+                case 'รอยืนยัน DO': return 'badge-info';
+                case 'รอ Sales Admin แก้ไข': return 'badge-danger';
+                case 'โอนงาน': return 'badge-warning';
+                case 'แก้ไขโดย Sale Admin': return 'badge-purple';
+                case 'กำลังดำเนินการ': return 'badge-primary';
+                case 'ดำเนินการเสร็จสิ้น': return 'badge-success';
+                default: return 'badge-secondary';
+            }
+        }
+
+        function updateSummaryCards(data) {
+            $('#totalTasksCard .big-number').text(data.length);
+            $('#pendingReviewCard .big-number').text(data.filter(d => ['รอยืนยัน DO', 'รอ Sales Admin แก้ไข', 'โอนงาน', 'แก้ไขโดย Sale Admin'].includes(d['Overall_Status'])).length);
+            $('#pendingShipmentCard .big-number').text(data.filter(d => d['Overall_Status'] === 'กำลังดำเนินการ').length);
+            $('#completedCard .big-number').text(data.filter(d => d['Overall_Status'] === 'ดำเนินการเสร็จสิ้น').length);
+        }
+
+        function loadBranchList() {
+            google.script.run.withSuccessHandler(response => {
+                if (response.success) {
+                    const filterBranchSelect = $('#filterBranch');
+                    const modalBranchSelect = $('#branch');
+                    filterBranchSelect.html('<option value="">สาขาทั้งหมด</option>');
+                    modalBranchSelect.html('<option value="">-- เลือกสาขา --</option>');
+                    response.data.forEach(branch => {
+                        const optionHtml = `<option value="${escapeHtml(branch)}">${escapeHtml(branch)}</option>`;
+                        filterBranchSelect.append(optionHtml);
+                        modalBranchSelect.append(optionHtml);
+                    });
+                }
+            }).getBranchList();
+        }
+
+        function initializePage() {
+            const flatpickrConfig = { dateFormat: "Y-m-d", altInput: true, altFormat: "d/m/Y" };
+            flatpickr("#filterSalesAdminDate", {...flatpickrConfig, defaultDate: "today"});
+            flatpickr("#filterDeliveryDateStart", flatpickrConfig);
+            flatpickr("#filterDeliveryDateEnd", flatpickrConfig);
+            flatpickr("#delivery_date", flatpickrConfig);
+
+            const token = localStorage.getItem('userToken');
+            if (token) {
+                google.script.run.withSuccessHandler(session => {
+                    if (session.success && session.loggedIn) {
+                        currentUser = { ...session.user, loggedIn: true, token: token };
+                    } else {
+                        localStorage.removeItem('userToken');
+                        currentUser = { loggedIn: false, token: null };
+                    }
+                    finalizeInitialization();
+                }).withFailureHandler(() => {
+                    currentUser = { loggedIn: false, token: null };
+                    finalizeInitialization();
+                }).getUserDetailsFromToken(token);
+            } else {
+                currentUser = { loggedIn: false, token: null };
+                finalizeInitialization();
+            }
+        }
+
+        function finalizeInitialization() {
+            updateUIForLoginStatus();
+            loadAllData(true);
+            loadBranchList();
+            startAutoRefresh();
+            if (currentUser.loggedIn) loadNotifications();
+        }
+
+        function exportToXLSX() {
+            if (!allTasksData || allTasksData.length === 0) {
+                displayMessage('#messageContainer', 'warning', 'ไม่มีข้อมูลสำหรับส่งออก');
+                return;
+            }
+
+            const headers = [
+                "หมายเลขงาน", "สาขา", "รอบส่ง", "จำนวน Do", "ผู้แจ้งงาน", "ผู้รับงาน",
+                "เวลาแจ้งงาน", "เวลารับงาน", "เวลาออก shipment", "สถานะล่าสุด",
+                "หมายเหตุปฏิเสธ", "จำนวน Shipment", "รายละเอียด Shipment เพิ่มเติม"
+            ];
+
+            const dataToExport = allTasksData.map(doo => ({
+                "หมายเลขงาน": doo['DO_Task_ID'] || '-',
+                "สาขา": doo['Branch'] || '-',
+                "รอบส่ง": formatTimestamp(doo['Delivery_Date'], 'date'),
+                "จำนวน Do": doo['SAP_DO_Number'] || '-',
+                "ผู้แจ้งงาน": doo['Sales_Admin_Name'] || '-',
+                "ผู้รับงาน": doo['Dispatcher_Name_DO'] || '-',
+                "เวลาแจ้งงาน": formatTimestamp(doo['Sales_Admin_Timestamp']),
+                "เวลารับงาน": formatTimestamp(doo['Dispatcher_DO_Confirm_Timestamp']),
+                "เวลาออก shipment": formatTimestamp(doo['Dispatcher_Shipment_Confirm_Timestamp']),
+                "สถานะล่าสุด": doo['Overall_Status'] || '-',
+                "หมายเหตุปฏิเสธ": doo['Rejection_Reason'] || '-',
+                "จำนวน Shipment": doo['Dispatcher_Shipment_Qty'] || '-',
+                "รายละเอียด Shipment เพิ่มเติม": doo['Dispatcher_Notes'] || '-'
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(dataToExport, { header: headers });
+            XLSX.utils.book_append_sheet(wb, ws, "DSO Report");
+            XLSX.writeFile(wb, `DSO_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        $(document).ready(function() {
+            initializePage();
+            // Initialize Popovers
+            $('[data-toggle="popover"]').popover({
+                trigger: 'hover' // Show popover on hover
+            });
+
+            // --- Event Handlers ---
+            $('#notificationDropdown').on('click', function() {
+                if (parseInt($('#notificationCount').text(), 10) > 0) {
+                    google.script.run.withSuccessHandler(res => { if (res.success) $('#notificationCount').text('0').hide(); }).markNotificationsAsRead(currentUser.token);
+                }
+            });
+
+            $('#applyFilterButton, #manualRefreshButton').on('click', () => loadAllData(true));
+            $('#exportToXLSXButton').on('click', exportToXLSX);
+            $('#clearFilterButton').on('click', () => {
+                document.querySelector("#filterSalesAdminDate")._flatpickr.setDate(new Date());
+                document.querySelector("#filterDeliveryDateStart")._flatpickr.clear();
+                document.querySelector("#filterDeliveryDateEnd")._flatpickr.clear();
+                $('#filterStatus, #filterBranch').val('');
+                loadAllData(true);
+            });
+
+            // --- Login/Logout/Settings ---
+            $('#loginButton').on('click', () => $('#loginModal').modal('show'));
+            $('#logoutButton').on('click', () => { stopAutoRefresh(); google.script.run.withSuccessHandler(res => { if (res.success) { localStorage.removeItem('userToken'); currentUser = { loggedIn: false, token: null }; $('#logoutSuccessModal').modal('show'); finalizeInitialization(); setTimeout(() => $('#logoutSuccessModal').modal('hide'), 1500); } }).logoutUser(localStorage.getItem('userToken')); });
+            $('#confirmLoginButton').on('click', function() { const btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>'); google.script.run.withSuccessHandler(res => { btn.prop('disabled', false).text('Login'); if (res.success) { localStorage.setItem('userToken', res.token); currentUser = { ...res.user, loggedIn: true, token: res.token }; $('#loginModal').modal('hide'); $('#loginSuccessModal').modal('show'); finalizeInitialization(); setTimeout(() => $('#loginSuccessModal').modal('hide'), 1500); } else { displayMessage('#loginMessageContainer', 'danger', res.message, true); } }).withFailureHandler(err => { btn.prop('disabled', false).text('Login'); displayMessage('#loginMessageContainer', 'danger', err.message, true); }).loginUser({ email: $('#email').val(), password: $('#password').val() }); });
+            $('#settingsButton').on('click', () => { $('#settingsMessageContainer, #displayNameForm, #passwordForm').trigger('reset'); $('#newDisplayName').val(currentUser.displayName); $('#settingsModal').modal('show'); });
+            $('#saveDisplayNameButton').on('click', function() { const btn = $(this).prop('disabled', true); google.script.run.withSuccessHandler(res => { btn.prop('disabled', false); if (res.success) { displayMessage('#settingsMessageContainer', 'success', res.message, true); currentUser.displayName = res.newDisplayName; updateUIForLoginStatus(); } else { displayMessage('#settingsMessageContainer', 'danger', res.message, true); } }).withFailureHandler(err => { btn.prop('disabled', false); displayMessage('#settingsMessageContainer', 'danger', err.message, true); }).updateUserDisplayName(currentUser.token, $('#newDisplayName').val()); });
+            $('#savePasswordButton').on('click', function() { const btn = $(this).prop('disabled', true); const newPw = $('#newPassword').val(); if (newPw !== $('#confirmNewPassword').val()) { displayMessage('#settingsMessageContainer', 'danger', 'รหัสผ่านใหม่และการยืนยันไม่ตรงกัน', true); btn.prop('disabled', false); return; } google.script.run.withSuccessHandler(res => { btn.prop('disabled', false); displayMessage('#settingsMessageContainer', res.success ? 'success' : 'danger', res.message, true); if(res.success) $('#passwordForm')[0].reset(); }).withFailureHandler(err => { btn.prop('disabled', false); displayMessage('#settingsMessageContainer', 'danger', err.message, true); }).changePassword(currentUser.token, $('#oldPassword').val(), newPw); });
+
+            // --- Task Modals Logic ---
+            $('#newTaskButton').on('click', () => { $('#taskForm')[0].reset(); $('#editingTaskId').val(''); $('#taskModalLabel').text('แจ้งงานใหม่'); $('#sap_do_number, #branch, #delivery_date, #sales_remarks').prop('disabled', false); document.querySelector("#delivery_date")._flatpickr.clear(); $('#new-task-confirm-check').show(); $('#taskModal').modal('show'); });
+
+            $('#tasksTableBody').on('click', '.task-details-link', function(e) {
+                e.preventDefault();
+                const taskId = $(this).data('task-id');
+                const task = allTasksData.find(t => t.DO_Task_ID == taskId);
+                if (!task) return;
+
+                // Populate the new modal layout
+                $('#detailTaskId').text(escapeHtml(task.DO_Task_ID));
+                $('#detailBranch').text(escapeHtml(task.Branch) || '-');
+                $('#detailDeliveryDate').text(formatTimestamp(task.Delivery_Date, 'date'));
+                $('#detailSapDo').text(escapeHtml(task.SAP_DO_Number) || '-');
+                $('#detailRequesterName').text(escapeHtml(task.Sales_Admin_Name) || '-');
+                $('#detailDispatcherName').text(escapeHtml(task.Dispatcher_Name_DO) || '-');
+                $('#detailCreatedTime').text(formatTimestamp(task.Sales_Admin_Timestamp));
+                $('#detailAckTime').text(formatTimestamp(task.Dispatcher_DO_Confirm_Timestamp));
+                $('#detailShipTime').text(formatTimestamp(task.Dispatcher_Shipment_Confirm_Timestamp));
+                $('#detailStatus').html(`<span class="badge ${getStatusBadgeClass(task.Overall_Status)}">${escapeHtml(task.Overall_Status)}</span>`);
+                $('#detailRejectionReason').text(escapeHtml(task.Rejection_Reason) || '-');
+                $('#detailShipmentQty').text(escapeHtml(task.Dispatcher_Shipment_Qty) || '-');
+                $('#detailsModalShipmentNotes').text(escapeHtml(task.Dispatcher_Notes) || '-');
+
+                const isOwner = currentUser.email === task['Sales_Admin_Email'];
+                const canEdit = (isOwner || currentUser.role === 'Admin') && task['Overall_Status'] !== 'ดำเนินการเสร็จสิ้น';
+                $('#detailsModalEditButton').data('task-id', taskId).toggle(canEdit);
+
+                $('#detailsModal').modal('show');
+            });
+
+            $('#detailsModalEditButton').on('click', function() {
+                const taskId = $(this).data('task-id');
+                $('#detailsModal').modal('hide');
+                google.script.run.withSuccessHandler(res => {
+                    if (res.success) {
+                        const task = res.data;
+                        $('#taskForm')[0].reset(); $('#editingTaskId').val(task['DO_Task_ID']);
+                        $('#taskModalLabel').text('แก้ไขหมายเหตุ - ' + task['DO_Task_ID']);
+                        $('#sap_do_number').val(task['SAP_DO_Number']).prop('disabled', true);
+                        $('#branch').val(task['Branch']).prop('disabled', true);
+                        document.querySelector("#delivery_date")._flatpickr.setDate(task['Delivery_Date'].substring(0,10));
+                        $('#delivery_date').prop('disabled', true);
+                        $('#sales_remarks').val(task['Sales_Admin_Remarks']).prop('disabled', false);
+                        $('#new-task-confirm-check').hide();
+                        $('#taskModal').modal('show');
+                    } else { displayMessage('#messageContainer', 'danger', 'Error fetching task details: ' + res.message); }
+                }).getDOTaskDetails(currentUser.token, taskId);
+            });
+
+            $('#saveTaskButton').on('click', function() {
+                const btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+                const editingId = $('#editingTaskId').val();
+
+                const successCallback = (res) => {
+                    btn.prop('disabled', false).text('บันทึก');
+                    if (res.success) {
+                        $('#taskModal').modal('hide');
+                        loadAllData(true);
+                        if (currentUser.loggedIn) loadNotifications();
+                    } else {
+                        displayMessage('#taskMessageContainer', 'danger', res.message, true);
+                    }
+                };
+
+                const failureCallback = (err) => {
+                    btn.prop('disabled', false).text('บันทึก');
+                    displayMessage('#taskMessageContainer', 'danger', err.message, true);
+                };
+
+                if (editingId) {
+                    google.script.run
+                        .withSuccessHandler(successCallback)
+                        .withFailureHandler(failureCallback)
+                        .updateTaskRemarks(currentUser.token, editingId, $('#sales_remarks').val());
+                } else {
+                    const formData = {
+                        sap_do_number: $('#sap_do_number').val(),
+                        branch: $('#branch').val(),
+                        delivery_date: $('#delivery_date').val(),
+                        sales_remarks: $('#sales_remarks').val(),
+                        confirm_submission: $('#confirm_submission').is(':checked')
+                    };
+                    google.script.run
+                        .withSuccessHandler(successCallback)
+                        .withFailureHandler(failureCallback)
+                        .submitNewDO(currentUser.token, formData);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
